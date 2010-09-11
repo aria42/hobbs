@@ -1,0 +1,31 @@
+PER-Group
+NOM officials troops forces members
+PRO they their we who them our those us everyone
+
+GPE
+NAM iraq u.s. states york
+NOM country government state city
+PRO its it we they our their here where that which
+
+PER-Individual
+NOM president  minister official leader
+NAM bush gore putin byrne
+PRO he i his who you she him my her himself herself
+
+ARTIFACT
+NOM cup gun car building
+PRO its it they their which that our one
+
+ORG
+NOM company firm unit
+PRO its it they their we which that our one
+NAM corp. co. inc.
+
+TIME
+NOM time year month day
+NAM janurary monday june
+PRO which that
+
+QUANT
+NOM % $ percent
+PRO its it which that
