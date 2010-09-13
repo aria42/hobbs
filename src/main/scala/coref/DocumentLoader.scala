@@ -11,6 +11,7 @@ import edu.berkeley.nlp.ling.{CollinsHeadFinder, HeadFinder}
 import java.{util => ju}
 import mochi.io.{IOUtils => IO}
 import mochi.nlp.Relation
+import edu.berkeley.nlp.util.Logger
 
 object DocumentLoader {
 
@@ -25,13 +26,17 @@ object DocumentLoader {
     }
   }
 
+  var warnedRelnWriting = false
  
   def fromPrefix(treesPath: String, mf: IMentionFinder): Document = {
     val treeIn = new InputStreamReader(new FileInputStream(treesPath))
     val trees = (new Trees.PennTreeReader(treeIn)).
         toSeq.map(t => RichLabel.getRichTree(t,hf))
     val relns: ju.List[ju.List[Relation]] = {
-        val relnFile = IO.changeExt(treesPath,HobbsGlobals.relnExt)
+        val relnFile = {
+          val f = new java.io.File(HobbsGlobals.outputDir,(new java.io.File(treesPath)).getName)
+          IO.changeExt(f.getAbsolutePath,HobbsGlobals.relnExt)
+        }
         if (IO.exists(relnFile))
           mochi.io.IOUtils.lines(relnFile).map(line => Relations.relnFromLine.apply(line))
         else {
@@ -46,8 +51,21 @@ object DocumentLoader {
                 System.exit(0)
             }            
           }
-          val res = trees.map(t => mochi.nlp.process.Relations.getRelations(t.getLabel.getOriginalNode))
+          val res: ju.List[ju.List[Relation]] = trees.zipWithIndex.map { case (t,i) =>
+            try {
+              mochi.nlp.process.Relations.getRelations(t.getLabel.getOriginalNode)
+           } catch {
+             case _ =>
+               Logger.logs("[Hobbs] Error processing relations from %sth tree in %s, extracting none for sentence".
+                  format(i.toString,treesPath))
+               new ju.ArrayList[Relation]()
+           }
+          }
           mochi.io.IOUtils.writeLines(relnFile,res.map(_.mkString(" ")))
+          if (!warnedRelnWriting) {
+           warnedRelnWriting = true
+           edu.berkeley.nlp.util.Logger.logs("[Hobbs] Writing relations files; subsequent data passes much faster") 
+          }
           res
         }
     }

@@ -73,7 +73,7 @@ public class EntType {
 
   public static void init() {
     List<EntType> allEntTypesList = new ArrayList<EntType>();
-    Map<String, EntTypeProtos> protoMap = EntTypePrototypeReader.readProtos(HobbsGlobals.prototypePath);
+    Map<String, EntTypeProtos> protoMap = EntTypePrototypeReader.readProtos();
     for (Map.Entry<String, EntTypeProtos> entry : protoMap.entrySet()) {
       String name = entry.getKey();
       EntTypeProtos protos = entry.getValue();

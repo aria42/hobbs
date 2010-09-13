@@ -76,7 +76,7 @@ public class HobbsGlobals {
   public static int maxMods = 2;
 
   // Resources
-  @Opt (required = true, gloss = "Prototypes")
+  @Opt 
   public static String prototypePath;
   @Opt
   public static String vocabPath = null;
