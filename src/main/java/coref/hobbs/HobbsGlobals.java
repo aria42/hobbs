@@ -31,6 +31,8 @@ public class HobbsGlobals {
   @Opt
   public static int numNoProFactorIters = 5;
   @Opt
+  public static int numSimpleHeuristicReferIters = 5;
+  @Opt
   public static int numInnerIters = 3;
   @Opt
   public static int numReferHyps = 10;
@@ -41,7 +43,11 @@ public class HobbsGlobals {
   @Opt
   public static boolean useHeadAsMod = true;
   @Opt
+  public static boolean useApposAsNomHead = false;  
+  @Opt
   public static double headAsModAlpha = 0.1;
+  @Opt
+  public static double apposAsNomHeadAlpha = 0.01;
   // Process - How Many Threads
   @Opt
   public static int numThreads = Runtime.getRuntime().availableProcessors();

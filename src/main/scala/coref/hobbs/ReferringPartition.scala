@@ -3,9 +3,10 @@ package coref.hobbs
 import scala.collection
 import scala.collection.JavaConversions._
 import java.{util => ju}
-import coref.{Antecedent, Document, Mention, SyntacticConfigurations}
 import edu.berkeley.nlp.math.{DoubleArrays, SloppyMath}
 import edu.berkeley.nlp.util.{Logger, Counters, Counter}
+import coref._
+import mochi.ml.probs.DirichletMultinomial
 
 object ReferringPartition {
 
@@ -46,6 +47,78 @@ object ReferringPartition {
           res.get(minEntIndex).add(ment)
           invMapping.put(ment,minEntIndex)
         }
+      }
+    }
+    res.map(ments => Entity.heuristicFromMentions(ments))
+  }
+
+  def getMostLikelyEntType(ment: Mention): EntType = {
+    val singletonEnt = Entity.heuristicFromMentions(Seq(ment))
+    def valFn(e: ju.Map.Entry[EntType,java.lang.Double]) = e.getValue.asInstanceOf[Double]
+    val posts = EntTypeFactor.computePosts(singletonEnt,List(ment -> 1.0),GlobalParams.cur)._2
+    posts.entrySet.max(Ordering.by(valFn)).getKey
+  }
+
+  def slightlySmarterHeuristic(doc: Document): Seq[Entity] = {
+    val res: ju.List[ju.List[Mention]] = new ju.ArrayList[ju.List[Mention]]()
+    val invMapping = new ju.IdentityHashMap[Mention,Int]()
+    for (ment: Mention <- doc.getReferMentions) {
+      val forced = SyntacticConfigurations.getForced(ment)
+      if (forced != null) {       
+        val entIndex = invMapping.get(forced)
+        res.get(entIndex).add(ment)
+        invMapping.put(ment,entIndex)
+      } else {
+        val mostLikelyEntType = getMostLikelyEntType(ment)
+        def isCompatibleAnt(ant: Antecedent): Boolean = {
+          if (ant.ant.headWord.equalsIgnoreCase(ment.headWord)) {
+            return true;
+          }
+          if (!ant.ant.isProper || !ment.isNominal) return false
+          val antMostLikelyEntType = getMostLikelyEntType(ant.ant)
+          val apposDistr = GlobalParams.cur.thetaByType.get(antMostLikelyEntType).vocabDistrs.get(new MentProp(PropType.MOD,"appos"));
+          try {
+            val apposCount = apposDistr.asInstanceOf[DirichletMultinomial[String]].getCount(ment.headWord)
+            // RBE For debugging
+            if (apposCount >= 10)
+              return true
+            else
+              return false
+          } catch {
+            case _ => return false
+          }          
+        }
+        val validAnts =
+          if (ment.isProper)
+            (for {
+               ant <- doc.getMentions.subList(0,ment.index)
+               if !ant.isPronoun && ant.headWord.equalsIgnoreCase(ment.headWord)
+            } yield (new Antecedent(ment,ant)))
+          else {
+            for {
+              a <- ment.possibleAnts
+              if !a.isNull && isCompatibleAnt(a)
+            } yield a
+          }
+        if (validAnts.isEmpty) {
+          val newEnt = new ju.ArrayList[Mention]()
+          invMapping.put(ment,res.size)
+          newEnt.add(ment)
+          res.add(newEnt)
+        } else {
+          val entDists = new Counter[Int]()
+          for (ant <- validAnts) {
+            val entIndex = invMapping(ant.ant)
+            if (!entDists.containsKey(entIndex)) {
+              entDists.setCount(entIndex,ant.treeDist)
+            } else {
+              entDists.setCount(entIndex,math.min(entDists.getCount(entIndex),ant.treeDist))
+            }
+          }
+          val minEntIndex =  Counters.sortedKeys(entDists).last
+          res.get(minEntIndex).add(ment)
+          invMapping.put(ment,minEntIndex)
+        }         
       }
     }
     res.map(ments => Entity.heuristicFromMentions(ments))
@@ -143,6 +216,7 @@ object ReferringPartition {
       else 1    
     var hyps = ju.Collections.singletonList(new Hypothesis())
     for (ment <- doc.getMentions; if !ment.isPronoun) {
+      val det: Option[String] = ment.getDeterminer
       var succs: ju.List[Hypothesis] = new ju.ArrayList[Hypothesis]()
       val singleEntTypePosts =
         EntTypeFactor.computePosts(Entity.heuristicFromMentions(Seq(ment)),List(ment -> 1.0),GlobalParams.cur)._2
@@ -155,6 +229,10 @@ object ReferringPartition {
         cutoff = succs.last.score
       }
       hyps = succs.take(HobbsGlobals.numReferHyps)
+      val newEnt = hyps.head.parts.map(_.ent).find(e => e.ments.contains(ment))
+      if (det.isDefined && det.get.equalsIgnoreCase("the")) {
+        val breakHere = true
+      }      
     }
     val ents = hyps.head.parts.map(_.ent)
     ents

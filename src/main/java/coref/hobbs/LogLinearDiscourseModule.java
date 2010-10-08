@@ -45,6 +45,7 @@ public class LogLinearDiscourseModule implements IDiscourseModule {
     if (ant.ant() == null) {
       res.add(new FVPair(featManager.getFeature("new-" + mentType + "-bias"), 1.0));
       String mentParentReln = ant.ment().parentAndWord().getFirst();
+      // I'm a new mention in a syntactic position
       res.add(new FVPair(featManager.getFeature("new-" + mentType + "-syn-pos=" + mentParentReln), 1.0));
       // CFG Feature
       if (ant.ment().isNominal()) {
@@ -61,11 +62,19 @@ public class LogLinearDiscourseModule implements IDiscourseModule {
       MentionType antType = ant.ant().mentType();
       // distance features
       res.add(new FVPair(featManager.getFeature("ant-tree-dist-" + mentType + "-" + antType), (double) ant.treeDist()));
-      res.add(new FVPair(featManager.getFeature("ant-sent-dist-" + mentType + "-" + antType + "=" + ant.sentDist()), 1.0));
+      res.add(new FVPair(featManager.getFeature("ant-sent-dist-" + mentType + "-" + antType), (double) ant.sentDist()));
+      for (Relation r: ant.ment().headRelns()) {
+        if (r.getLabel().startsWith("det")) {
+          String det = ant.ment().sent().words().get(r.getDepIndex()).toLowerCase();
+          res.add(new FVPair(featManager.getFeature("ant-" + mentType + "-det=" + det),1.0));
+        }
+      }
       //res.add(new FVPair(featManager.getFeature("ant-ment-dist-" + mentType + "-" + antType),ant.mentDist()));
       // syntactic position
         String mentParentReln = ant.ment().parentAndWord().getFirst();
         String antParentReln = ant.ant().parentAndWord().getFirst();
+      res.add(new FVPair(featManager.getFeature(String.format(
+        "ant-%s->%s-%s", mentType, antType, antParentReln)), 1.0));      
         res.add(new FVPair(featManager.getFeature(String.format(
           "ant-syn-pos-%s-%s->%s-%s", mentType, mentParentReln, antType, antParentReln)), 1.0));
     }
@@ -85,6 +94,9 @@ public class LogLinearDiscourseModule implements IDiscourseModule {
       }
       if (f.getObj().toString().startsWith("ant-tree-dist-NOM")) {
         weights[f.getIndex()] = -0.01;
+      }
+      if (f.getObj().toString().startsWith("new-NOMINAL-det=the")) {
+        weights[f.getIndex()] = -0.1;
       }
       if (f.getObj().toString().startsWith("new-PRONOUN-bias")) {
         weights[f.getIndex()] = -1000;
@@ -145,17 +157,15 @@ public class LogLinearDiscourseModule implements IDiscourseModule {
             for (DiscourseSuffStats instance : data) {
               if (instance.weights().length == 1) continue;
               double[] probs = getAntProbs(instance.fvs());
+              double[] weights = instance.weights();
               for (int i = 0; i < probs.length; i++) {
-                List<FVPair> fv = instance.fvs().get(i);
-                double prob = probs[i];
-                double weight = instance.weights()[i];
-                logProb += weight * Math.log(prob);
-                for (FVPair pair : fv) {
+                logProb += weights[i] * Math.log(probs[i]);
+                for (FVPair pair : instance.fvs().get(i)) {
                   Feature f = pair.f;
                   double v = pair.v;
-                  grad[f.getIndex()] += (weight - prob) * v;
+                  grad[f.getIndex()] += (weights[i] - probs[i]) * v;
                 }
-              }
+              }                                   
             }
           }
         }
@@ -174,7 +184,7 @@ public class LogLinearDiscourseModule implements IDiscourseModule {
         }
         logProb *= -1;
         // very light regularization - sigmaSq not sensitive
-        // logProb += (new L2Regularizer(100.0)).update(weights,grad,1.0);
+        logProb += (new L2Regularizer(100.0)).update(weights,grad,1.0);
         DoubleArrays.scale(grad, -1);        
         return Pair.newPair(logProb, grad);
       }
@@ -279,7 +289,7 @@ public class LogLinearDiscourseModule implements IDiscourseModule {
     featManager = new FeatureManager();
     Logger.startTrack("LogLinearDiscourse Feature Indexing");
     indexFeatures(data);
-    Logger.logs("feats: " + featManager.getFeatures());
+    Logger.logs("number of features indexed: " + featManager.getFeatures().size());
     Logger.endTrack();
   }
 

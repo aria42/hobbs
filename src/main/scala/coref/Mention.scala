@@ -93,6 +93,10 @@ class Mention(@BeanProperty val sent: Sentence,
       fig.basic.Pair.makePair(r.getLabel,word)
     }
   }
+
+  def getDeterminer: Option[String] = {
+    headRelns.find(p => p.getLabel== "det").map(p => sent.words(p.getDepIndex))
+  }
     
   override def toString = "Mention(%s)".format(words.mkString("",",",""))
 

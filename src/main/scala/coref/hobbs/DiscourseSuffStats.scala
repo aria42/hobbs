@@ -11,7 +11,7 @@ class DiscourseSuffStats(val fvs: ju.List[ju.List[FVPair]], val weights: Array[D
 object DiscourseSuffStats {
 
   def fromAntFactors(elems: Seq[(Antecedent,Double)]): DiscourseSuffStats = {
-    val pruned = elems.sortBy(-_._2).take(20)        
+    val pruned = elems.filter(_._2 > 0.01).sortBy(-_._2).take(20)        
     val fvs = pruned.map(_._1.featVec)
     val weights = pruned.map(_._2).toArray
     DoubleArrays.probabilisticNormalize(weights)

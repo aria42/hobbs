@@ -16,10 +16,12 @@ class EntTypePrototypeReader {
 
   
   static Map<String, EntTypeProtos> readProtos() {
-    if (HobbsGlobals.prototypePath != null) return readProtos(IOUtils.text(new File(HobbsGlobals.prototypePath)));
+    if (HobbsGlobals.prototypePath != null) {
+      Logger.logs("[Hobbs] Using Protos from " + HobbsGlobals.prototypePath);
+      return readProtos(IOUtils.text(new File(HobbsGlobals.prototypePath)));
+    }
     Logger.logs("[Hobbs] Using Default Protots");
     InputStream is = ClassLoader.getSystemClassLoader().getResourceAsStream("default-protos.txt");
-    Logger.logs("[is] = " + is);
     return readProtos(IOUtils.text(is));
   }
 

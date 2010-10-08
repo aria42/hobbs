@@ -5,6 +5,7 @@ import edu.berkeley.nlp.concurrent.Lazy;
 import fig.basic.Pair;
 import mochi.ml.probs.DirichletMultinomial;
 import mochi.ml.probs.Distribution;
+import edu.berkeley.nlp.util.Logger;
 
 import java.util.HashMap;
 import java.util.List;
@@ -105,6 +106,10 @@ public class EntTypeParams {
     }
     return vocabDistrs.get(PRO_PROP.get()).getLogProb(ment.getHeadWord().toLowerCase());
   }
+  
+  private static double interpolate(double normalProb, double backoffProb, double backoffAlpha) {
+    return normalProb * (1-backoffAlpha)  + backoffProb * backoffAlpha;
+  }
 
   public double getMentLogProb(Mention ment, Entity ewl)
   {
@@ -126,7 +131,15 @@ public class EntTypeParams {
       if (HobbsGlobals.useHeadAsMod && r.equals(new MentProp(PropType.MOD,"nn"))) {
         Set<String> referHeads = ewl.getReferHeads();
         double modProb = referHeads.contains(w.toLowerCase()) ? 1.0/referHeads.size() : 0.0;
-        entProb = (1-HobbsGlobals.headAsModAlpha) * entProb + HobbsGlobals.headAsModAlpha * modProb;
+        entProb = interpolate(entProb, modProb, HobbsGlobals.headAsModAlpha);
+      }
+      if (HobbsGlobals.useApposAsNomHead && r.equals(new MentProp(PropType.HEAD,"nom"))) {
+        double apposProb = vocabDistrs.get(new MentProp(PropType.MOD,"appos")).getProb(w);
+        double beforeEntProb = entProb;
+        entProb = interpolate(entProb, apposProb, HobbsGlobals.apposAsNomHeadAlpha);        
+        if (entProb > beforeEntProb) {
+          Logger.logs("beforeEntProb: %.3f entProb: %.3f",beforeEntProb,entProb);                
+        }
       }
       assert entProb >= 0.0 && entProb <= 1.0;      
       double typeProb = vocabDistrs.get(r).getProb(w); 

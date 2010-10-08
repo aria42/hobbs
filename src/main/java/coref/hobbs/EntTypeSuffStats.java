@@ -3,11 +3,13 @@ package coref.hobbs;
 import coref.*;
 import edu.berkeley.nlp.util.Counter;
 import edu.berkeley.nlp.util.CounterMap;
+import edu.berkeley.nlp.util.Logger;
 import fig.basic.Pair;
 import mochi.ml.probs.Distribution;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class EntTypeSuffStats {
 
@@ -50,7 +52,8 @@ public class EntTypeSuffStats {
       MentProp r = pair.getFirst();
       String w = pair.getSecond();
       List<String> L = ent.getWordList(r);
-      double entProb = L.contains(w) ?
+      double entProb =
+          L.contains(w) ?
          1.0 / L.size() :
          0.0;
       double typeProb =

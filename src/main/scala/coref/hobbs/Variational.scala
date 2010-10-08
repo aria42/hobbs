@@ -21,7 +21,12 @@ object Variational {
 
   private def getDatum(doc: Document): Datum = {
     val ents: Seq[Entity] =
-      if (useHeuristicRefer) ReferringPartition.heuristic(doc)
+      if (useHeuristicRefer) {
+        if (globalIter < HobbsGlobals.numSimpleHeuristicReferIters)
+          ReferringPartition.heuristic(doc)
+        else
+          ReferringPartition.slightlySmarterHeuristic(doc)
+      }
       else ReferringPartition.learnedGuess(doc,GlobalParams.cur)
     val pros = doc.getMentions.filter(_.isPronoun)
     for ((ent,entIndex) <- ents.zipWithIndex; m: Mention <- ent.ments) {
@@ -153,9 +158,9 @@ object Variational {
 
   private class ErrorStats {
     val tests: Map[String,(Entity => Boolean,Entity => Double)] = {
-      Map( "mr"-> (_.getWordList(new MentProp(PropType.MOD, "nn")).contains("Sir"),
+      Map( "sir"-> (_.getWordList(new MentProp(PropType.MOD, "nn")).contains("Sir"),
                    _.entTypeFactors.getCount(EntType.byName("per-individual"))),
-          "sir"-> (_.getWordList(new MentProp(PropType.MOD, "nn")).contains("Mr."),
+          "mr"-> (_.getWordList(new MentProp(PropType.MOD, "nn")).contains("Mr."),
                    _.entTypeFactors.getCount(EntType.byName("per-individual"))))
     }
 
@@ -204,7 +209,7 @@ object Variational {
 
   private def updateDiscourseFactor(doc: Document,params: GlobalParams,stats: GlobalSuffStats,datum: Variational.Datum) {
     val breakHere = true
-    if (!useHeuristicRefer) {
+    if (globalIter >= HobbsGlobals.numSimpleHeuristicReferIters) {
       val entAssigns = new Array[Int](doc.getMentions.size)
       java.util.Arrays.fill(entAssigns,-1)
       for ((ent,index) <- datum.ents.zipWithIndex; ment <- ent.ments) {
@@ -213,7 +218,7 @@ object Variational {
       // nominal terms
       for (nom: Mention <- doc.getMentions; if nom.isNominal) {
         val ent: Entity = datum.ents(entAssigns(nom.index))
-        val isFirst = (ent.ments(0) eq nom)
+        val isFirst = ent.ments.map(_.index).min == nom.index
         val antProbs = params.getAntProbs(nom)
         if (isFirst) {
           java.util.Arrays.fill(antProbs,0.0)

@@ -72,7 +72,7 @@ public class GlobalParams implements IMergable<GlobalParams> {
     for (MentProp r: Arrays.asList(new MentProp(PropType.MOD,"nn"),
                                    new MentProp(PropType.GOV,"nsubj"),
                                    new MentProp(PropType.MOD,"appos"))) {
-      Logger.logss(r + " -> " + typeParams.vocabDistrs.get(r));
+      Logger.logss(r + " -> " + typeParams.vocabDistrs.get(r).toString(10));
     }
     Logger.endTrack();
   }

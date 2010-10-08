@@ -5,6 +5,7 @@ import coref.mentdetect.AllNPMentFinder
 import edu.berkeley.nlp.util.Logger
 import scala.collection.JavaConversions._
 import coref.{MentProp, DocumentDesc}
+import mochi.io.IOUtils
 
 object Main extends Runnable {
 
@@ -13,6 +14,10 @@ object Main extends Runnable {
     var data = getData
     Logger.logs("[Hobbs] training with %s docs", data.size.toString)
     Logger.logs("[Hobbs] Output Directory: %s", HobbsGlobals.outputDir);
+    if (!IOUtils.exists(new java.io.File(HobbsGlobals.outputDir))) {
+      Logger.logs("[Hobbs] Creating Output Directory")
+      new java.io.File(HobbsGlobals.outputDir).mkdirs
+    }
     Setup.setupVocab(data)
     data = data.filter(!_.failedToLoad)
     MentProp.init()

@@ -20,9 +20,6 @@ public class Vocab implements Serializable {
 
   public static final long serialVersionUID = 42L;
 
-//  public Map<MentionType, Set<String>> heads = new HashMap<MentionType, Set<String>>();
-//  public Map<String, Set<String>> parents = new HashMap<String, Set<String>>();
-//  public Map<String, Set<String>> deps = new HashMap<String, Set<String>>();
   public Map<MentProp, Set<String>> words = new HashMap<MentProp,Set<String>>();
   public Set<MentionTypeSig> mentTypeSigs = new HashSet<MentionTypeSig>();
 
@@ -81,7 +78,10 @@ public class Vocab implements Serializable {
 //      CollectionUtils.mergeInto(global.parents, worker.parents);
 //      CollectionUtils.mergeInto(global.deps, worker.deps);
       global.mentTypeSigs.addAll(worker.mentTypeSigs);
-    }    
+    }
+    for (Map.Entry<MentProp,Set<String>> entry: global.words.entrySet()) {
+      Logger.logs(String.format("%s -> num words: %d", entry.getKey(), entry.getValue().size()));
+    }
     Logger.endTrack();
   }
 
